@@ -58,7 +58,7 @@ Go to project directory where `build.sbt` is located and run:
 sbt assembly 
 ```
 
-This will produce the `scala/target/gbif_shapefile_geocoder-assembly-0.1.0.jar` file that can be run on the cluster. 
+This will produce the `scala/target/scala-2.11/gbif_shapefile_geocoder-assembly-0.1.0.jar` file that can be run on the cluster. 
 
 Right now the save database is hard-coded to be **jwaller**. This needs to be changed if you want to save the results somewhere else. 
 
