@@ -47,6 +47,22 @@ Example using a polygon shapefile based off of https://www.discreteglobalgrids.o
 spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "isea3h_res5_shapefile" "isea3h_res5_table" "polygon_geometry string, polygon_id int,  point_geometry string, decimallatitude double, decimallongitude double, gbifid bigint" "_c3" "_c4" "uat"
 ```` 
 
+## working with results 
+
+Example of joining with rest of occurrences to work with results. 
+
+```
+val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+
+val df_1 = sqlContext.sql("SELECT * FROM jwaller.isea3h_res5_table")
+
+// val df_2 = sqlContext.sql("SELECT * FROM prod_h.occurrence_pipeline_hdfs").
+val df_2 = sqlContext.sql("SELECT * FROM uat.occurrence_pipeline_hdfs").
+select("gbifid","taxonkey","datasetkey","taxonrank")
+
+val df = df_1.join(df_2,"gbifid")
+```
+
 
 ## build this project 
 
