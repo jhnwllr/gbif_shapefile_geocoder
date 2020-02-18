@@ -26,8 +26,8 @@ Finally you can run the jar using `spark2-submit`.
 
 These configurations are reccommended by **geospark**. `--conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g"`
 
-You should also include 4 additional 
-Arguments:
+You should also include 6 additional arguments on the command line: 
+
 1. **shapefile**: the name of the shapefile in hdfs i.e. "country_centroid_shapefile" 
 2. **table_name**: the name of the table you want to save results "country_centroid_table" 
 3. **schema**: the hive schema to save the table. All results will have a **polygon_geometry** and **point_geometry** column. "polygon_geometry string, polygon_id int, iso2 string,  point_geometry string,  decimallatitude double, decimallongitude double" 
