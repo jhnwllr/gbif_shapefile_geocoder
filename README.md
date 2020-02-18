@@ -6,9 +6,9 @@ Currently it is expected that the shapefile includes only **simple polygons** (n
 
 The project is built using [geospark](http://geospark.datasyslab.org/). 
 
-R scripts for generating shapefiles can be found in shapefile_making_R_scripts.
+**R scripts** for generating shapefiles can be found in **\shapefile_making_R_scripts**.
 
-Any shapefile you want to use should be loaded into the cluster hdfs. For example the country centroid shapefile can be loaded like this: 
+Any shapefile you want to use should be loaded into the cluster hdfs. For example the `shapefiles\country_centroid_shapefile` can be loaded like this: 
 
 ```
 scp -r /cygdrive/c/Users/ftw712/Desktop/country_centroid_shapefile/ jwaller@c4gateway-vh.gbif.org:/home/jwaller/
@@ -25,7 +25,7 @@ scp -r /cygdrive/c/Users/ftw712/Desktop/gbif_shapefile_geocoder/scala/target/sca
 
 Finally you can run the jar using `spark2-submit`. 
 
-These configurations are reccommended by geospark. `--conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g"`
+These configurations are reccommended by **geospark**. `--conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g"`
 
 You should also include 4 additional 
 Arguments:
