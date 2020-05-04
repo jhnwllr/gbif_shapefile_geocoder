@@ -299,7 +299,7 @@ ggsave("C:/Users/ftw712/Desktop/plot.pdf",plot=p,width=16,height=9,limitsize=FAL
 }
 
 
-if(FALSE) { # create country centroid shapefile 
+if(FALSE) { # create country centroid shapefile for countries
 
 library(sp)
 library(rgdal)
@@ -307,14 +307,18 @@ library(rgeos)
 library(dplyr)
 library(sf)
 
-points_df = CoordinateCleaner::countryref %>% # centroids from the CoordinateCleaner package
-filter(type == "country") %>% # only country centroids
-filter(area_sqkm >= 10e3) %>% # only with land area greater than 10km2
-select(iso2,long=centroid.lon,lat=centroid.lat) %>%
-mutate(ID = row_number()) %>%
-glimpse() 
+# points_df = CoordinateCleaner::countryref %>% # centroids from the CoordinateCleaner package
+# filter(type == "country") %>% # only country centroids
+# filter(area_sqkm >= 10e3) %>% # only with land area greater than 10km2
+# select(iso2,long=centroid.lon,lat=centroid.lat) %>%
+# mutate(ID = row_number()) %>%
+# glimpse() 
 
-points_sp = SpatialPointsDataFrame(points_df[, c("long", "lat")], data.frame(ID=seq(1:nrow(points_df))), proj4string=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84"))
+centroids = readRDS("C:/Users/ftw712/Desktop/gbif_shapefile_geocoder/shapefile_making_R_scripts/data/centroids.rda") %>%
+filter(area_km2 >= 10e3) %>% # only with land area greater than 10km2
+mutate(ID = row_number())
+
+points_sp = SpatialPointsDataFrame(centroids[, c("lon", "lat")], data.frame(ID=seq(1:nrow(centroids))), proj4string=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84"))
 
 aeqd.buffer = function(p, r) {
 stopifnot(length(p) == 1)
@@ -332,13 +336,14 @@ sf::st_as_sf()
 
 sf_obj = polygon_list %>% 
 do.call("rbind",.) %>%
-merge(points_df,id="ID") %>%
-select(ID,iso2,geometry)
+merge(centroids,id="ID") %>%
+select(ID,iso2,iso3,centroid_source,geometry)
 
 # wicket::sp_convert() 
 sf_obj
 
-st_write(sf_obj, "C:/Users/ftw712/Desktop/country_centroid_shapefile/country_centroid_shapefile.shp")
+path = "C:/Users/ftw712/Desktop/gbif_shapefile_geocoder/" 
+st_write(sf_obj, paste0(path,"shapefiles/country_centroid_shapefile.shp"))
 
 # scp -r /cygdrive/c/Users/ftw712/Desktop/country_centroid_shapefile/ jwaller@c4gateway-vh.gbif.org:/home/jwaller/
 # hdfs dfs -put country_centroid_shapefile/ country_centroid_shapefile
