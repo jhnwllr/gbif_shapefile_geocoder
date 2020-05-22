@@ -57,12 +57,19 @@ import org.apache.spark.sql.functions._;
 val sqlContext = new org.apache.spark.sql.SQLContext(sc);
 import sqlContext.implicits._;
 
-\\ read in the geocoded table  
+// set the columns to join on 
+val col1 = "lat" 
+val col2 = "lon"
+val database = "prod_h"
+val save_table_name = "country_centroid_table"
+
+
+// read in the geocoded table  
 val df_geocode = spark.read.
 option("sep", "\t").
 option("header", "false").
 option("inferSchema", "true").
-csv("country_centroid_table").
+csv(save_table_name).
 withColumnRenamed("_c2","iso2").
 withColumnRenamed("_c3","iso3").
 withColumnRenamed("_c4","source").
@@ -70,10 +77,6 @@ withColumnRenamed("_c6","lat").
 withColumnRenamed("_c7","lon").
 select("iso2","iso3","source","lat","lon")
 
-\\ set the columns to join on 
-val col1 = "lat" 
-val col2 = "lon"
-val database = "prod_h"
 
 val df_occ = sqlContext.sql("SELECT * FROM " + database + ".occurrence_hdfs").
 select("gbifid","decimallatitude","decimallongitude").
@@ -87,7 +90,7 @@ df_geocode(col2) === df_occ("decimallongitude_occ")
 ,"left").
 drop("decimallatitude_occ").
 drop("decimallongitude_occ").
-cache() \\ you can cache this table if it is small enough 
+cache() // you can cache this table if it is small enough 
 
 df_output.groupBy("source").count()
 
