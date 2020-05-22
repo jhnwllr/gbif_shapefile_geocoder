@@ -26,43 +26,72 @@ Finally you can run the jar using `spark2-submit`.
 
 These configurations are reccommended by **geospark**. `--conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g"`
 
-You should also include 6 additional arguments on the command line: 
+You should also include 3 additional arguments on the command line: 
 
 1. **shapefile**: the name of the shapefile in hdfs i.e. "country_centroid_shapefile" 
-2. **table_name**: the name of the table you want to save results "country_centroid_table" 
-3. **schema**: the hive schema to save the table. All results will have a **polygon_geometry** and **point_geometry** column. "polygon_geometry string, polygon_id int, iso2 string,  point_geometry string,  decimallatitude double, decimallongitude double" 
-4. **col1**: name of lat column after join. Will be something like "_c4" depending on number of id variables in the shapefile. 
-5. **col2**: name of long column after join. Will be something like "_c5" depending on number of id variables in the shapefile.
-6. **database**:  The hdfs table where occurrences table lives ( **.occurrence_pipeline_hdfs** ) i.e. "uat" or "prod_h"
+2. **save_table_name**: the name of the table you want to save results "country_centroid_table" 
+3. **database**:  The hdfs table where occurrences table lives ( **.occurrence_hdfs** ) i.e. "uat" or "prod_h"
 
-> Since there is a polygon_id and a iso2 column in the country_centroid_shapefile the join columns will be "_c4" and "_c5". Would be "_c3" "_c4" if is there was only one polygon id column.
+This will save a tsv table in hdfs with unique lat lon points that are within the polygons in the shapefile. 
 
 ```
-spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "country_centroid_shapefile" "country_centroid_table" "polygon_geometry string, polygon_id int, iso2 string,  point_geometry string, decimallatitude double, decimallongitude double, gbifid bigint" "_c4" "_c5" "uat"
+spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "country_centroid_shapefile" "country_centroid_table" "uat"
+spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "country_centroid_shapefile" "country_centroid_table" "prod"
 ```
 
 Example using a polygon shapefile based off of https://www.discreteglobalgrids.org/
 
 ```
-spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "isea3h_res5_shapefile" "isea3h_res5_table" "polygon_geometry string, polygon_id int,  point_geometry string, decimallatitude double, decimallongitude double, gbifid bigint" "_c3" "_c4" "uat"
+spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "isea3h_res5_shapefile" "isea3h_res5_table" "uat"
+spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "isea3h_res5_shapefile" "isea3h_res5_table" "prod"
 ```` 
 
 ## working with results 
 
-Example of joining with rest of occurrences to work with results. 
+To do something meaningful with the results, you need to join with the rest of the occurrence data.  
+
+```scala
+import org.apache.spark.sql.DataFrame;
+import org.apache.spark.sql.functions._;
+
+val sqlContext = new org.apache.spark.sql.SQLContext(sc);
+import sqlContext.implicits._;
+
+\\ read in the geocoded table  
+val df_geocode = spark.read.
+option("sep", "\t").
+option("header", "false").
+option("inferSchema", "true").
+csv("country_centroid_table").
+withColumnRenamed("_c2","iso2").
+withColumnRenamed("_c3","iso3").
+withColumnRenamed("_c4","source").
+withColumnRenamed("_c6","lat").
+withColumnRenamed("_c7","lon").
+select("iso2","iso3","source","lat","lon")
+
+\\ set the columns to join on 
+val col1 = "lat" 
+val col2 = "lon"
+val database = "prod_h"
+
+val df_occ = sqlContext.sql("SELECT * FROM " + database + ".occurrence_hdfs").
+select("gbifid","decimallatitude","decimallongitude").
+withColumnRenamed("decimallatitude","decimallatitude_occ").
+withColumnRenamed("decimallongitude","decimallongitude_occ").
+na.drop()
+
+val df_output = df_geocode.join(df_occ, 
+df_geocode(col1) === df_occ("decimallatitude_occ") && 
+df_geocode(col2) === df_occ("decimallongitude_occ")
+,"left").
+drop("decimallatitude_occ").
+drop("decimallongitude_occ").
+cache() \\ you can cache this table if it is small enough 
+
+df_output.groupBy("source").count()
 
 ```
-val sqlContext = new org.apache.spark.sql.SQLContext(sc)
-
-val df_1 = sqlContext.sql("SELECT * FROM jwaller.isea3h_res5_table")
-
-// val df_2 = sqlContext.sql("SELECT * FROM prod_h.occurrence_pipeline_hdfs").
-val df_2 = sqlContext.sql("SELECT * FROM uat.occurrence_pipeline_hdfs").
-select("gbifid","taxonkey","datasetkey","taxonrank")
-
-val df = df_1.join(df_2,"gbifid")
-```
-
 
 ## build this project 
 
@@ -75,6 +104,4 @@ sbt assembly
 ```
 
 This will produce the `scala/target/scala-2.11/gbif_shapefile_geocoder-assembly-0.1.0.jar` file that can be run on the cluster. 
-
-Right now the save database is hard-coded to be **jwaller**. This needs to be changed if you want to save the results somewhere else. 
 

@@ -299,7 +299,7 @@ ggsave("C:/Users/ftw712/Desktop/plot.pdf",plot=p,width=16,height=9,limitsize=FAL
 }
 
 
-if(FALSE) { # create country centroid shapefile for countries
+# if(FALSE) { # create country centroid shapefile for countries
 
 library(sp)
 library(rgdal)
@@ -337,7 +337,7 @@ sf::st_as_sf()
 sf_obj = polygon_list %>% 
 do.call("rbind",.) %>%
 merge(centroids,id="ID") %>%
-select(ID,iso2,iso3,centroid_source,geometry)
+select(ID,iso2,iso3,source = centroid_source,geometry)
 
 # wicket::sp_convert() 
 sf_obj
@@ -349,7 +349,17 @@ st_write(sf_obj, paste0(path,"shapefiles/country_centroid_shapefile.shp"))
 # hdfs dfs -put country_centroid_shapefile/ country_centroid_shapefile
 # hdfs dfs -ls 
 
-}
+# check shapefile 
+# library(dplyr)
+# path = "C:/Users/ftw712/Desktop/gbif_shapefile_geocoder/" 
+# sf::st_read(paste0(path,"shapefiles/country_centroid_shapefile")) %>% 
+# glimpse()
+
+# }
+
+spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "country_centroid_shapefile" "country_centroid_table" "uat"
+
+
 
 if(FALSE) { # isea3h grid processing 
 library(roperators)
