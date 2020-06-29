@@ -299,7 +299,7 @@ ggsave("C:/Users/ftw712/Desktop/plot.pdf",plot=p,width=16,height=9,limitsize=FAL
 }
 
 
-# if(FALSE) { # create country centroid shapefile for countries
+if(FALSE) { # create country centroid shapefile for countries
 
 library(sp)
 library(rgdal)
@@ -355,9 +355,7 @@ st_write(sf_obj, paste0(path,"shapefiles/country_centroid_shapefile.shp"))
 # sf::st_read(paste0(path,"shapefiles/country_centroid_shapefile")) %>% 
 # glimpse()
 
-# }
-
-spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "country_centroid_shapefile" "country_centroid_table" "uat"
+}
 
 
 
@@ -469,6 +467,59 @@ ashe %>% class()
 st_write(ashe, "C:/Users/ftw712/Desktop/ashe/ashe.shp")
 }
 
-# create zoos herbaria shapefile 
+if(FALSE) { # create zoos herbaria shapefile 
+
+library(sp)
+library(rgdal)
+library(rgeos)
+library(dplyr)
+library(sf)
+
+points_df = CoordinateCleaner::institutions %>%
+janitor::clean_names() %>%
+mutate(ID = row_number()) %>%
+mutate(lon = decimallongitude) %>%
+mutate(lat = decimallatitude) %>%
+filter(!is.na(lon)) %>%
+filter(!is.na(lat)) %>%
+glimpse()
+
+points_sp = SpatialPointsDataFrame(points_df[, c("lon", "lat")], data.frame(ID=seq(1:nrow(points_df))), proj4string=CRS("+proj=longlat +ellps=WGS84 +datum=WGS84"))
+
+aeqd.buffer = function(p, r) {
+stopifnot(length(p) == 1)
+aeqd = sprintf("+proj=aeqd +lat_0=%s +lon_0=%s +x_0=0 +y_0=0", p@coords[[2]], p@coords[[1]])
+projected = spTransform(p, CRS(aeqd))
+buffered = gBuffer(projected, width=r, byid=TRUE)
+spTransform(buffered, p@proj4string)
+}
+
+polygon_list = list()
+for(i in 1:nrow(points_sp)) { 
+polygon_list[[i]] = aeqd.buffer(points_sp[i,], 2000) %>% # two kilometer buffer around point 
+sf::st_as_sf()
+}
+
+sf_obj = polygon_list %>% 
+do.call("rbind",.) %>%
+merge(points_df,id="ID") %>%
+select(ID,type,iso3 = country,source,geometry)
+
+path = "C:/Users/ftw712/Desktop/gbif_shapefile_geocoder/" 
+st_write(sf_obj, paste0(path,"shapefiles/zoos_herbaria_shapefile.shp"))
+
+# scp -r /cygdrive/c/Users/ftw712/Desktop/zoos_herbaria_shapefile/ jwaller@c5gateway-vh.gbif.org:/home/jwaller/
+# hdfs dfs -put zoos_herbaria_shapefile/ zoos_herbaria_shapefile
+# hdfs dfs -ls 
 
 
+# check shapefile 
+library(dplyr)
+path = "C:/Users/ftw712/Desktop/gbif_shapefile_geocoder/" 
+sf::st_read(paste0(path,"shapefiles/zoos_herbaria_shapefile")) %>% 
+glimpse()
+
+
+# spark2-submit --conf "spark.driver.memory=10g" --conf "spark.network.timeout=1000s" --conf "spark.driver.maxResultSize=5g" gbif_shapefile_geocoder-assembly-0.1.0.jar "zoos_herbaria_shapefile" "zoos_herbaria_table" "prod_h"
+
+}
